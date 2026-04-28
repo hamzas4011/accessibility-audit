@@ -2,10 +2,35 @@
 
 import { useState } from "react";
 
+type Violation = {
+  id: string;
+  impact: "critical" | "serious" | "moderate" | "minor";
+  description: string;
+  help: string;
+  helpUrl: string;
+  nodes: { html: string; failureSummary: string }[];
+};
+
+type ScanResult = {
+  violations: Violation[];
+  passesCount: number;
+  incompleteCount: number;
+};
+
+function impactBadge(impact: string) {
+  const map: Record<string, string> = {
+    critical: "bg-red-100 text-red-800 border-red-300",
+    serious: "bg-orange-100 text-orange-800 border-orange-300",
+    moderate: "bg-yellow-100 text-yellow-900 border-yellow-300",
+    minor: "bg-sky-100 text-sky-800 border-sky-300",
+  };
+  return map[impact] ?? "bg-slate-100 text-slate-700 border-slate-200";
+}
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ message: string; length: number } | null>(null);
+  const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState("");
 
   const handleScan = async () => {
@@ -18,17 +43,16 @@ export default function Home() {
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ url }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || "Something went wrong");
-      } else {
-        setResult(data);
-      }
+      if (!res.ok) setError(data.error || "Something went wrong");
+      else setResult(data);
     } catch {
       setError("Failed to connect to server");
     }
@@ -37,89 +61,51 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-xl border border-slate-200">
+    <main className="min-h-screen bg-slate-50 px-4 py-12">
+      <div className="mx-auto w-full max-w-2xl">
+        <h1 className="text-3xl font-bold text-slate-900 mb-1">
+          Accessibility Audit
+        </h1>
+        <p className="text-slate-500 text-sm mb-6">
+          Scan any website for accessibility violations.
+        </p>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            Accessibility Audit
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Enter a URL to scan its HTML and check accessibility.
-          </p>
-        </div>
-
-        {/* Input */}
-        <div className="mb-4">
-          <label
-            htmlFor="url-input"
-            className="block text-sm font-medium text-slate-700 mb-1"
-          >
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
             Website URL
           </label>
+
           <input
-            id="url-input"
             type="url"
             placeholder="https://example.com"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleScan()}
-            aria-describedby={error ? "scan-error" : undefined}
-            aria-invalid={error ? "true" : "false"}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-4"
           />
+
+          {/* ✅ FIXED BUTTON */}
+          <button
+            onClick={handleScan}
+            disabled={loading || !url}
+            className="w-full bg-black text-white py-2.5 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading && (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            {loading ? "Scanning..." : "Scan Website"}
+          </button>
+
+          {error && (
+            <p className="mt-4 text-sm text-red-600">{error}</p>
+          )}
         </div>
 
-        {/* Button */}
-        <button
-          onClick={handleScan}
-          disabled={loading || !url}
-          aria-busy={loading ? "true" : "false"}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          {loading ? (
-            <>
-              <span
-                className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-                aria-hidden="true"
-              />
-              Scanning…
-            </>
-          ) : (
-            "Scan Website"
-          )}
-        </button>
-
-        {/* Error */}
-        {error && (
-          <p
-            id="scan-error"
-            role="alert"
-            className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3"
-          >
-            {error}
-          </p>
-        )}
-
-        {/* Result */}
         {result && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg"
-          >
-            <p className="text-sm font-semibold text-green-800 mb-2">Scan complete</p>
-            <dl className="text-sm text-green-700 space-y-1">
-              <div className="flex justify-between">
-                <dt className="font-medium">Status</dt>
-                <dd>{result.message}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">HTML size</dt>
-                <dd>{result.length.toLocaleString()} characters</dd>
-              </div>
-            </dl>
+          <div className="bg-white p-4 rounded-xl border">
+            <p className="font-semibold mb-2">Result:</p>
+            <pre className="text-sm">
+              {JSON.stringify(result, null, 2)}
+            </pre>
           </div>
         )}
       </div>

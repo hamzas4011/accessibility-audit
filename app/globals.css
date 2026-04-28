@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.btn-scan {
+  background-color: #1d4ed8;
+  color: #ffffff;
+}
+.btn-scan:hover:not(:disabled) {
+  background-color: #1e40af;
+}
+.btn-scan:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
